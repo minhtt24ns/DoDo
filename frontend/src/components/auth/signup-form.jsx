@@ -15,7 +15,7 @@ const signUpSchema = z.object({
   firstname: z.string().min(1, "Tên không được để trống"),
   username: z.string().min(3, "Tên đăng nhập phải có ít nhất 3 kí tự"),
   email: z.email("Email không hợp lệ"),
-  password: z.string().min(1, "Mật khẩu không được để trống").min(6, "Mật khẩu phải có ít nhất 6 kí tự"),
+  password: z.string().min(1, "Mật khẩu không được để trống").min(3, "Mật khẩu phải có ít nhất 3 kí tự"),
 })
 
 /** @typedef {z.infer<typeof signUpSchema>} SignUpFormValues */

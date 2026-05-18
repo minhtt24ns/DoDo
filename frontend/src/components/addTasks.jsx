@@ -48,9 +48,8 @@ const AddTasks = ({handleNewTaskAdded}) => {
           />
 
           <Button
-          variant='gradient'
           size='xl'
-          className='px-6'
+          className='px-6 bg-linear-to-br from-primary to-primary-light hover:from-primary/90 hover:to-primary-light/90 hover:scale-[1.02] transition-all duration-200 ease-in-out'
           onClick={addTask}
           disabled={!newTaskTitle.trim()}
           >

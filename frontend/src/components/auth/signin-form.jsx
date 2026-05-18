@@ -11,7 +11,7 @@ import { useNavigate } from "react-router"
 
 const signInSchema = z.object({
   username: z.string().min(3, "Tên đăng nhập phải có ít nhất 3 kí tự"),
-  password: z.string().min(1, "Mật khẩu không được để trống").min(6, "Mật khẩu phải có ít nhất 6 kí tự"),
+  password: z.string().min(1, "Mật khẩu không được để trống"),
 })
 
 /** @typedef {z.infer<typeof signInSchema>} SignInFormValues */
@@ -35,8 +35,12 @@ export function SigninForm({
  const onSubmit = async (data) => {
   const {username,password} = data
 
-  await signIn(username,password)
-  navigate('/')
+  try {
+    await signIn(username,password)
+    navigate('/')
+  } catch {
+    // signIn đã hiện toast lỗi rồi, không cần làm gì thêm
+  }
  }
 
 

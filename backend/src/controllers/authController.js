@@ -56,12 +56,12 @@ export const signIn = async (req, res) => {
         //lấy hashedPassword trong db để so sánh với password input
         const user = await User.findOne({ username });
         if (!user) {
-            return res.status(401).json({ message: "username hoặc password không chính xác" });
+            return res.status(401).json({ message: "Tài khoản hoặc mật khẩu không đúng" });
         }
 
         const passwordCorrect = await bcrypt.compare(password, user.hashedPassword);
         if (!passwordCorrect) {
-            return res.status(401).json({ message: "username hoặc password không chính xác" });
+            return res.status(401).json({ message: "Tài khoản hoặc mật khẩu không đúng" });
         }
 
         //nếu khớp, tạo accessToken với JWT

@@ -42,7 +42,7 @@ export const useAuthStore = create((set,get) => ({
 
       const data = await authService.signIn(username,password)
 
-      get().setAccessToken(accessToken)
+      get().setAccessToken(data.accessToken)
 
       await get().fetchMe()
 
@@ -51,7 +51,9 @@ export const useAuthStore = create((set,get) => ({
     }
     catch(error){
       console.log(error)
-      toast.error("Đăng nhập không thành công")
+      const message = error.response?.data?.message || "Đăng nhập không thành công";
+      toast.error(message)
+      throw error; // throw lại để form biết đăng nhập thất bại
     }
     finally{
       set({loading:false})
@@ -105,8 +107,12 @@ export const useAuthStore = create((set,get) => ({
     }
     catch(error){
       console.error(error);
+      const hadSession = !!get().accessToken;
       get().clearState();
-      toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+      // Chỉ hiện toast khi user đã từng đăng nhập (session thật sự hết hạn)
+      if (hadSession) {
+        toast.error("Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+      }
     }
     finally{
       set({loading: false});
