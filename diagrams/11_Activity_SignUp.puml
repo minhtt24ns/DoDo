@@ -1,0 +1,56 @@
+@startuml Activity_SignUp
+title Activity Diagram - Đăng ký tài khoản
+
+start
+
+:Người dùng truy cập trang /signup;
+
+:Nhập thông tin:
+- Họ, Tên
+- Tên đăng nhập
+- Email
+- Mật khẩu;
+
+:Submit form;
+
+:Validate dữ liệu phía client
+(Zod schema);
+
+if (Dữ liệu hợp lệ?) then (Không)
+    :Hiển thị lỗi validation
+    dưới từng trường input;
+    stop
+else (Có)
+endif
+
+:Gửi request POST /api/auth/signup
+đến Backend;
+
+:Backend kiểm tra
+username đã tồn tại chưa;
+
+if (Username đã tồn tại?) then (Có)
+    :Trả về lỗi 409
+    "Username đã tồn tại";
+    :Hiển thị toast lỗi;
+    stop
+else (Chưa)
+endif
+
+:Mã hóa mật khẩu
+bằng bcrypt (saltRounds=10);
+
+:Tạo document User mới
+trong MongoDB;
+
+:Trả về 201
+"Đăng ký thành công";
+
+:Hiển thị toast thành công;
+
+:Chuyển hướng sang
+trang /signin;
+
+stop
+
+@enduml

@@ -1,0 +1,72 @@
+@startuml Sequence_ViewAndFilter
+title Sequence Diagram - Xem danh sách & Lọc công việc
+
+actor "Người dùng" as User
+participant "HomePage\n(Component)" as Home
+participant "StatsAndFilters" as Filters
+participant "DatetimeFilter" as DateFilter
+participant "Axios" as Axios
+participant "authMiddleware" as MW
+participant "GET /api/tasks\n(Backend)" as API
+database "MongoDB" as DB
+
+== Khi trang HomePage mount ==
+
+Home -> Home : useEffect([dateQuery])\n→ fetchTasks()
+activate Home
+
+Home -> Axios : GET /tasks?filter=today
+activate Axios
+Axios -> MW : HTTP GET (Bearer token)
+activate MW
+MW -> API : next()
+deactivate MW
+activate API
+
+API -> API : Xác định startDate\ntừ query param "filter"
+note right of API
+  switch(filter):
+    'today' → đầu ngày hôm nay
+    'week'  → thứ Hai tuần này
+    'month' → ngày 1 tháng này
+    'all'   → null (không lọc)
+end note
+
+API -> API : query = {userId}\nnếu startDate: query.createdAt = {$gte: startDate}
+
+API -> DB : Task.aggregate([\n  {$match: query},\n  {$facet: {\n    tasks: [{$sort: {createdAt: -1}}],\n    activeTaskCount: [...],\n    completedTaskCount: [...]\n  }}\n])
+activate DB
+DB --> API : result
+deactivate DB
+
+API --> Axios : 200 {tasks,\nactiveTaskCount,\ncompletedTaskCount}
+deactivate API
+Axios --> Home : response.data
+deactivate Axios
+
+Home -> Home : setTaskBuffer(tasks)\nsetActiveTaskCount(...)\nsetCompletedTaskCount(...)
+
+== Người dùng lọc theo trạng thái ==
+
+User -> Filters : Click "Đang Thực Hiện"
+activate Filters
+Filters -> Home : setFilter('active')
+deactivate Filters
+
+Home -> Home : filteredTasks = taskBuffer\n.filter(t => t.status === 'active')
+Home -> Home : visibleTasks = filteredTasks\n.slice(start, end)
+Home -> Home : setPage(1)
+
+== Người dùng lọc theo thời gian ==
+
+User -> DateFilter : Chọn "Tuần này"
+activate DateFilter
+DateFilter -> Home : setDateQuery('week')
+deactivate DateFilter
+
+Home -> Home : useEffect trigger\n→ fetchTasks() với filter=week
+Home -> Axios : GET /tasks?filter=week
+note right: Luồng tương tự như trên
+
+deactivate Home
+@enduml

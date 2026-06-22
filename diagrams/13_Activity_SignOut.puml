@@ -1,0 +1,37 @@
+@startuml Activity_SignOut
+title Activity Diagram - Đăng xuất
+
+start
+
+:Người dùng click
+nút "Đăng xuất";
+
+:Frontend xóa state
+(accessToken = null,
+user = null);
+
+:Gửi POST /api/auth/signout
+(kèm cookie refreshToken);
+
+:Backend lấy refreshToken
+từ cookie;
+
+if (Có refreshToken?) then (Có)
+    :Xóa Session tương ứng
+    trong MongoDB;
+    :Xóa cookie refreshToken
+    trên trình duyệt;
+else (Không)
+    :Bỏ qua;
+endif
+
+:Trả về 204 No Content;
+
+:toast.success
+"Đăng xuất thành công";
+
+:navigate('/signin');
+
+stop
+
+@enduml

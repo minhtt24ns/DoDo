@@ -1,0 +1,52 @@
+@startuml Sequence_SignOut
+title Sequence Diagram - Đăng xuất
+
+actor "Người dùng" as User
+participant "Logout\n(Component)" as Logout
+participant "useAuthStore\n(Zustand)" as Store
+participant "authService" as Service
+participant "Axios" as Axios
+participant "POST /api/auth/signout\n(Backend)" as API
+database "MongoDB" as DB
+
+User -> Logout : Click "Đăng xuất"
+activate Logout
+
+Logout -> Store : signOut()
+activate Store
+
+Store -> Store : clearState()\n{accessToken: null,\nuser: null}
+
+Store -> Service : authService.signOut()
+activate Service
+
+Service -> Axios : POST /auth/signout\n(withCredentials: true)
+activate Axios
+
+Axios -> API : HTTP POST\n(Cookie: refreshToken=xxx)
+activate API
+
+API -> API : Lấy refreshToken từ cookie
+
+alt Có refreshToken
+    API -> DB : Session.deleteOne(\n{refreshToken: token})
+    activate DB
+    DB --> API : deleted
+    deactivate DB
+    API -> API : res.clearCookie("refreshToken")
+end
+
+API --> Axios : 204 No Content
+deactivate API
+Axios --> Service : response
+deactivate Axios
+Service --> Store : resolve
+deactivate Service
+
+Store --> User : toast.success(\n"Đăng xuất thành công")
+deactivate Store
+
+Logout -> Logout : navigate('/signin')
+deactivate Logout
+
+@enduml

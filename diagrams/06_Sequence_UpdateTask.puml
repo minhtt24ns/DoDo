@@ -1,0 +1,49 @@
+@startuml Sequence_UpdateTask
+title Sequence Diagram - Chỉnh sửa công việc
+
+actor "Người dùng" as User
+participant "TaskCard\n(Component)" as Card
+participant "Axios\n(with Interceptor)" as Axios
+participant "authMiddleware" as MW
+participant "PUT /api/tasks/:id\n(Backend)" as API
+database "MongoDB" as DB
+
+User -> Card : Click icon bút chì (SquarePen)
+activate Card
+Card -> Card : setIsEditing(true)\nHiển thị Input thay vì text
+
+User -> Card : Sửa tiêu đề\n+ nhấn Enter hoặc blur
+
+Card -> Axios : PUT /tasks/{taskId}\n{title: updateTaskTitle}
+activate Axios
+
+Axios -> Axios : Gắn Bearer token
+
+Axios -> MW : HTTP PUT
+activate MW
+MW -> MW : Verify JWT + tìm user
+MW -> API : next() (req.user = user)
+deactivate MW
+activate API
+
+API -> DB : Task.findOneAndUpdate(\n{_id: taskId, userId: req.user._id},\n{title}, {new: true})
+activate DB
+DB --> API : updatedTask / null
+deactivate DB
+
+alt Task không tồn tại hoặc không phải của user
+    API --> Axios : 404 {message: "Nhiệm vụ\nkhông tồn tại hoặc\nbạn không có quyền"}
+    Axios --> Card : error
+    Card --> User : toast.error("Đã có lỗi xảy ra...")
+else Cập nhật thành công
+    API --> Axios : 200 {updatedTask}
+    deactivate API
+    Axios --> Card : response
+    deactivate Axios
+    Card -> Card : setIsEditing(false)
+    Card --> User : toast.success("Công việc\nđã được cập nhật...")
+    Card -> Card : handleTaskChanged()\n→ fetchTasks() lại
+end
+
+deactivate Card
+@enduml

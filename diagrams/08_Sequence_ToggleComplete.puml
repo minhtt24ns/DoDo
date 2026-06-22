@@ -1,0 +1,46 @@
+@startuml Sequence_ToggleComplete
+title Sequence Diagram - Đánh dấu hoàn thành / chưa hoàn thành
+
+actor "Người dùng" as User
+participant "TaskCard\n(Component)" as Card
+participant "Axios\n(with Interceptor)" as Axios
+participant "authMiddleware" as MW
+participant "PUT /api/tasks/:id\n(Backend)" as API
+database "MongoDB" as DB
+
+User -> Card : Click nút tròn\n(Circle / CheckCircle2)
+activate Card
+
+alt task.status === 'active'
+    Card -> Axios : PUT /tasks/{taskId}\n{status: 'completed',\ncompletedAt: new Date()}
+else task.status === 'completed'
+    Card -> Axios : PUT /tasks/{taskId}\n{status: 'active',\ncompletedAt: null}
+end
+
+activate Axios
+Axios -> MW : HTTP PUT (Bearer token)
+activate MW
+MW -> MW : Verify JWT
+MW -> API : next()
+deactivate MW
+activate API
+
+API -> DB : Task.findOneAndUpdate(\n{_id, userId},\n{status, completedAt},\n{new: true})
+activate DB
+DB --> API : updatedTask
+deactivate DB
+
+API --> Axios : 200 {updatedTask}
+deactivate API
+Axios --> Card : response
+deactivate Axios
+
+alt Đã đánh dấu hoàn thành
+    Card --> User : toast.success(\n"... đã được hoàn thành")
+else Đã bỏ đánh dấu
+    Card --> User : toast.success(\n"... đã đổi sang trạng thái\nchưa hoàn thành")
+end
+
+Card -> Card : handleTaskChanged()\n→ fetchTasks() lại
+deactivate Card
+@enduml

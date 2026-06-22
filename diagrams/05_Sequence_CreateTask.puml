@@ -1,0 +1,56 @@
+@startuml Sequence_CreateTask
+title Sequence Diagram - Tạo công việc mới
+
+actor "Người dùng" as User
+participant "AddTasks\n(Component)" as AddTask
+participant "Axios\n(with Interceptor)" as Axios
+participant "authMiddleware" as MW
+participant "POST /api/tasks\n(Backend)" as API
+database "MongoDB" as DB
+
+User -> AddTask : Nhập tiêu đề công việc\n+ Click "Thêm" / Enter
+activate AddTask
+
+AddTask -> AddTask : Kiểm tra\nnewTaskTitle.trim()
+
+alt Tiêu đề rỗng
+    AddTask --> User : toast.error("Vui lòng\nnhập tên công việc")
+else Tiêu đề hợp lệ
+    AddTask -> Axios : POST /tasks\n{title: newTaskTitle}
+    activate Axios
+
+    Axios -> Axios : Request Interceptor:\ngắn Authorization header\nBearer {accessToken}
+
+    Axios -> MW : HTTP POST
+    activate MW
+
+    MW -> MW : Lấy token từ header\njwt.verify(token, secret)
+    MW -> DB : User.findById(decodedUser.userId)\n.select("-hashedPassword")
+    activate DB
+    DB --> MW : user
+    deactivate DB
+    MW -> MW : req.user = user
+    MW -> API : next()
+    deactivate MW
+    activate API
+
+    API -> API : const {title} = req.body\nuserId = req.user._id
+
+    API -> DB : new Task({title, userId}).save()
+    activate DB
+    DB --> API : newTask
+    deactivate DB
+
+    API --> Axios : 201 {newTask}
+    deactivate API
+
+    Axios --> AddTask : response
+    deactivate Axios
+
+    AddTask --> User : toast.success("Công việc\n... đã được thêm thành công")
+    AddTask -> AddTask : setNewTaskTitle('')
+    AddTask -> AddTask : handleNewTaskAdded()\n→ fetchTasks() lại
+end
+
+deactivate AddTask
+@enduml

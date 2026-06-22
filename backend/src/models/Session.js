@@ -16,6 +16,10 @@ const sessionSchema = new mongoose.Schema({
         type: Date,
         required: true,
     },
+    lastActiveAt: {
+        type: Date,
+        default: Date.now, // thời điểm hoạt động cuối cùng
+    },
 },
 {
     timestamps: true, 

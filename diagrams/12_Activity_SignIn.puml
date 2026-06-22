@@ -1,0 +1,78 @@
+@startuml Activity_SignIn
+title Activity Diagram - Đăng nhập
+
+start
+
+:Người dùng truy cập trang /signin;
+
+:Nhập Tên đăng nhập
+và Mật khẩu;
+
+:Submit form;
+
+:Validate phía client (Zod)
+- username >= 3 ký tự
+- password không rỗng;
+
+if (Validation OK?) then (Không)
+    :Hiển thị lỗi validation;
+    stop
+else (Có)
+endif
+
+:Gửi POST /api/auth/signin
+{username, password};
+
+:Backend tìm user
+theo username;
+
+if (Tìm thấy user?) then (Không)
+    :Trả về 401
+    "Tài khoản hoặc mật khẩu
+    không đúng";
+    :toast.error(message);
+    stop
+else (Có)
+endif
+
+:bcrypt.compare(password,
+hashedPassword);
+
+if (Mật khẩu đúng?) then (Không)
+    :Trả về 401
+    "Tài khoản hoặc mật khẩu
+    không đúng";
+    :toast.error(message);
+    stop
+else (Đúng)
+endif
+
+:Tạo Access Token (JWT)
+thời hạn 15 phút;
+
+:Tạo Refresh Token
+(crypto.randomBytes);
+
+:Lưu Session vào MongoDB
+{userId, refreshToken, expiresAt};
+
+:Gửi Refresh Token qua
+HttpOnly Cookie (14 ngày);
+
+:Trả Access Token
+trong response body;
+
+:Frontend lưu accessToken
+vào Zustand store;
+
+:Gọi fetchMe() lấy
+thông tin user;
+
+:toast.success
+"Đăng nhập thành công!";
+
+:navigate('/') về trang chủ;
+
+stop
+
+@enduml

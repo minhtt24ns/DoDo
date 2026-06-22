@@ -1,0 +1,61 @@
+@startuml UseCase_Diagram
+left to right direction
+skinparam packageStyle rectangle
+skinparam actorStyle awesome
+
+title Sơ đồ Use Case - Ứng dụng quản lý công việc DoDo
+
+actor "Người dùng\n(User)" as User
+actor "Khách\n(Guest)" as Guest
+
+rectangle "Hệ thống DoDo" {
+    ' === Chức năng công khai ===
+    usecase "Đăng ký tài khoản" as UC_SignUp
+    usecase "Đăng nhập" as UC_SignIn
+
+    ' === Chức năng yêu cầu xác thực ===
+    usecase "Đăng xuất" as UC_SignOut
+    usecase "Xem thông tin cá nhân" as UC_FetchMe
+
+    ' === Quản lý công việc ===
+    usecase "Xem danh sách\ncông việc" as UC_ViewTasks
+    usecase "Tạo công việc mới" as UC_CreateTask
+    usecase "Chỉnh sửa công việc" as UC_UpdateTask
+    usecase "Xóa công việc" as UC_DeleteTask
+    usecase "Đánh dấu hoàn thành\n/ chưa hoàn thành" as UC_ToggleTask
+
+    ' === Lọc & Phân trang ===
+    usecase "Lọc theo trạng thái\n(Tất cả / Đang thực hiện\n/ Hoàn thành)" as UC_FilterStatus
+    usecase "Lọc theo thời gian\n(Hôm nay / Tuần / Tháng\n/ Tất cả)" as UC_FilterDate
+    usecase "Phân trang\ndanh sách" as UC_Pagination
+
+    ' === Hệ thống tự động ===
+    usecase "Làm mới Access Token\n(Refresh Token)" as UC_Refresh
+}
+
+' --- Quan hệ Guest ---
+Guest --> UC_SignUp
+Guest --> UC_SignIn
+
+' --- Quan hệ User ---
+User --> UC_SignOut
+User --> UC_FetchMe
+User --> UC_ViewTasks
+User --> UC_CreateTask
+User --> UC_UpdateTask
+User --> UC_DeleteTask
+User --> UC_ToggleTask
+User --> UC_FilterStatus
+User --> UC_FilterDate
+User --> UC_Pagination
+
+' --- Quan hệ Include / Extend ---
+UC_SignIn ..> UC_Refresh : <<include>>
+UC_ViewTasks ..> UC_FilterStatus : <<extend>>
+UC_ViewTasks ..> UC_FilterDate : <<extend>>
+UC_ViewTasks ..> UC_Pagination : <<extend>>
+
+' --- Kế thừa ---
+User --|> Guest : <<kế thừa>>
+
+@enduml

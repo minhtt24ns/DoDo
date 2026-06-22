@@ -1,0 +1,62 @@
+@startuml Sequence_SignUp
+title Sequence Diagram - Đăng ký tài khoản
+
+actor "Người dùng" as User
+participant "SignupForm\n(Frontend)" as Form
+participant "useAuthStore\n(Zustand)" as Store
+participant "authService" as Service
+participant "Axios\nInterceptor" as Axios
+participant "POST /api/auth/signup\n(Backend)" as API
+database "MongoDB" as DB
+
+User -> Form : Nhập họ, tên, username,\nemail, mật khẩu
+activate Form
+
+Form -> Form : Validate với Zod schema\n(min length, email format...)
+
+alt Validation thất bại
+    Form --> User : Hiển thị lỗi validation\n(text đỏ dưới input)
+else Validation thành công
+    Form -> Store : signUp(username, email,\npassword, firstName, lastName)
+    activate Store
+
+    Store -> Service : authService.signUp(...)
+    activate Service
+
+    Service -> Axios : POST /auth/signup\n{username, email, password,\nfirstName, lastName}
+    activate Axios
+
+    Axios -> API : HTTP POST
+    activate API
+
+    API -> DB : User.findOne({username})
+    activate DB
+    DB --> API : result
+    deactivate DB
+
+    alt Username đã tồn tại
+        API --> Axios : 409 {message: "Username đã tồn tại"}
+        Axios --> Service : AxiosError (409)
+        Service --> Store : throw error
+        Store --> User : toast.error("Đăng ký không thành công")
+    else Username chưa tồn tại
+        API -> API : bcrypt.hash(password, 10)
+        API -> DB : User.create({username, email,\nhashedPassword, displayName})
+        activate DB
+        DB --> API : newUser
+        deactivate DB
+        API --> Axios : 201 {message: "Đăng ký thành công"}
+        deactivate API
+        Axios --> Service : response
+        deactivate Axios
+        Service --> Store : data
+        deactivate Service
+        Store --> User : toast.success("Đăng ký thành công!")
+        Store --> Form : resolve
+        deactivate Store
+        Form -> Form : navigate('/signin')
+    end
+end
+
+deactivate Form
+@enduml

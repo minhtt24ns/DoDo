@@ -1,0 +1,45 @@
+@startuml Sequence_DeleteTask
+title Sequence Diagram - Xóa công việc
+
+actor "Người dùng" as User
+participant "TaskCard\n(Component)" as Card
+participant "Axios\n(with Interceptor)" as Axios
+participant "authMiddleware" as MW
+participant "DELETE /api/tasks/:id\n(Backend)" as API
+database "MongoDB" as DB
+
+User -> Card : Click icon thùng rác (Trash2)
+activate Card
+
+Card -> Axios : DELETE /tasks/{taskId}
+activate Axios
+
+Axios -> Axios : Gắn Bearer token
+
+Axios -> MW : HTTP DELETE
+activate MW
+MW -> MW : Verify JWT + tìm user
+MW -> API : next()
+deactivate MW
+activate API
+
+API -> DB : Task.findOneAndDelete(\n{_id: taskId,\nuserId: req.user._id})
+activate DB
+DB --> API : deletedTask / null
+deactivate DB
+
+alt Task không tồn tại hoặc không phải của user
+    API --> Axios : 404 {message: "Nhiệm vụ\nkhông tồn tại hoặc\nbạn không có quyền"}
+    Axios --> Card : error
+    Card --> User : toast.error("Đã có lỗi\nxảy ra khi xóa công việc")
+else Xóa thành công
+    API --> Axios : 200 {deletedTask}
+    deactivate API
+    Axios --> Card : response
+    deactivate Axios
+    Card --> User : toast.success("Công việc\nđã được xóa thành công")
+    Card -> Card : handleTaskChanged()\n→ fetchTasks() lại
+end
+
+deactivate Card
+@enduml

@@ -1,0 +1,82 @@
+@startuml Sequence_RefreshToken
+title Sequence Diagram - Làm mới Access Token (Refresh Token)
+
+actor "Người dùng" as User
+participant "ProtectedRoute\n(Component)" as PR
+participant "useAuthStore\n(Zustand)" as Store
+participant "authService" as Service
+participant "Axios" as Axios
+participant "POST /api/auth/refresh\n(Backend)" as API
+database "MongoDB" as DB
+
+== Khi truy cập trang được bảo vệ ==
+
+User -> PR : Truy cập route "/"
+activate PR
+
+PR -> PR : Kiểm tra accessToken\ntừ useAuthStore
+
+alt Không có accessToken (null)
+    PR -> Store : refresh()
+    activate Store
+
+    Store -> Service : authService.refresh()
+    activate Service
+
+    Service -> Axios : POST /auth/refresh\n(withCredentials: true)
+    activate Axios
+
+    Axios -> API : HTTP POST\n(Cookie: refreshToken=xxx)
+    activate API
+
+    API -> API : Lấy token từ\nreq.cookies.refreshToken
+
+    alt Không có refreshToken
+        API --> Axios : 401 "Refresh token\nkhông tồn tại"
+        Axios --> Service : AxiosError
+        Service --> Store : throw error
+        Store -> Store : clearState()
+        Store --> PR : error
+        PR -> PR : Navigate → /signin
+    else Có refreshToken
+        API -> DB : Session.findOne(\n{refreshToken: token})
+        activate DB
+        DB --> API : session / null
+        deactivate DB
+
+        alt Session không tồn tại
+            API --> Axios : 403 "Refresh token\nkhông hợp lệ"
+        else Session hết hạn
+            API --> Axios : 401 "Refresh token\nđã hết hạn"
+        else Session hợp lệ
+            API -> API : jwt.sign({userId},\nsecret, {expiresIn: "15m"})
+            API --> Axios : 200 {accessToken}
+            deactivate API
+            Axios --> Service : response
+            deactivate Axios
+            Service --> Store : accessToken
+            deactivate Service
+
+            Store -> Store : setAccessToken(accessToken)
+
+            alt Chưa có user info
+                Store -> Service : fetchMe()
+                Service -> Axios : GET /users/me
+                Axios -> API : HTTP GET
+                API -> DB : User.findById(userId)
+                DB --> API : user
+                API --> Axios : 200 {user}
+                Axios --> Service : response
+                Service --> Store : user
+                Store -> Store : set({user})
+            end
+
+            deactivate Store
+            PR -> PR : setStarting(false)
+            PR -> PR : Render <Outlet> (HomePage)
+        end
+    end
+end
+
+deactivate PR
+@enduml

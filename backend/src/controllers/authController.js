@@ -6,6 +6,7 @@ import Session from "../models/Session.js";
 
 const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL = 14 * 24 * 60 * 60 * 1000; // 14 ngày 24 giờ 60 phút 60 giây
+const IDLE_TIMEOUT = 15 * 60 * 1000; // 15 phút - thời gian tối đa không hoạt động trước khi bị đăng xuất
 export const signUp = async (req, res) => {
     try {
         const { username, email, password, firstName, lastName } = req.body;
@@ -79,6 +80,7 @@ export const signIn = async (req, res) => {
             userId: user._id,
             refreshToken,
             expiresAt: new Date(Date.now() + REFRESH_TOKEN_TTL),
+            lastActiveAt: new Date(), // ghi nhận thời điểm đăng nhập
         });
 
         //gửi refresh token về client thông qua cookie
@@ -137,7 +139,20 @@ export const refreshTokens = async(req, res) => {
         if (session.expiresAt < new Date()) {
             return res.status(401).json({ message: "Refresh token đã hết hạn" });
         }
+
+        //kiểm tra thời gian không hoạt động (idle timeout)
+        const idleTime = Date.now() - new Date(session.lastActiveAt).getTime();
+        if (idleTime > IDLE_TIMEOUT) {
+            // Quá 15 phút không hoạt động → xóa session và từ chối
+            await Session.deleteOne({ _id: session._id });
+            res.clearCookie("refreshToken");
+            return res.status(401).json({ message: "Phiên đăng nhập đã hết hạn do không hoạt động" });
+        }
         
+        //cập nhật thời gian hoạt động cuối cùng
+        session.lastActiveAt = new Date();
+        await session.save();
+
         //tạo access token mới từ refresh token
         const accessToken = jwt.sign(
             { userId: session.userId },

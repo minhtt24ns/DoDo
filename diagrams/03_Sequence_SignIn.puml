@@ -1,0 +1,76 @@
+@startuml Sequence_SignIn
+title Sequence Diagram - Đăng nhập
+
+actor "Người dùng" as User
+participant "SigninForm\n(Frontend)" as Form
+participant "useAuthStore\n(Zustand)" as Store
+participant "authService" as Service
+participant "Axios" as Axios
+participant "POST /api/auth/signin\n(Backend)" as API
+database "MongoDB" as DB
+
+User -> Form : Nhập username, password
+activate Form
+Form -> Form : Validate với Zod schema
+
+Form -> Store : signIn(username, password)
+activate Store
+
+Store -> Service : authService.signIn(username, password)
+activate Service
+
+Service -> Axios : POST /auth/signin\n{username, password}
+activate Axios
+
+Axios -> API : HTTP POST
+activate API
+
+API -> DB : User.findOne({username})
+activate DB
+DB --> API : user / null
+deactivate DB
+
+alt User không tồn tại hoặc sai mật khẩu
+    API --> Axios : 401 {message: "Tài khoản\nhoặc mật khẩu không đúng"}
+    Axios --> Service : AxiosError (401)
+    Service --> Store : throw error
+    Store --> User : toast.error("Tài khoản\nhoặc mật khẩu không đúng")
+    Store --> Form : throw error
+    Form -> Form : Giữ nguyên trang /signin
+else Đăng nhập thành công
+    API -> API : bcrypt.compare(password,\nhashedPassword)
+    API -> API : jwt.sign({userId}, secret,\n{expiresIn: "15m"})
+    API -> API : crypto.randomBytes(40)\n→ refreshToken
+    API -> DB : Session.create({userId,\nrefreshToken, expiresAt})
+    activate DB
+    DB --> API : session
+    deactivate DB
+    API --> Axios : 200 {accessToken}\n+ Set-Cookie: refreshToken
+    deactivate API
+    Axios --> Service : response
+    deactivate Axios
+    Service --> Store : data {accessToken}
+    deactivate Service
+
+    Store -> Store : setAccessToken(data.accessToken)
+
+    Store -> Service : authService.fetchMe()
+    activate Service
+    Service -> Axios : GET /users/me
+    Axios -> API : HTTP GET\n(Authorization: Bearer token)
+    API -> DB : User.findById(userId)
+    DB --> API : user
+    API --> Axios : 200 {user}
+    Axios --> Service : response
+    Service --> Store : user
+    deactivate Service
+
+    Store -> Store : set({user})
+    Store --> User : toast.success("Đăng nhập\nthành công! Chào mừng...")
+    Store --> Form : resolve
+    deactivate Store
+    Form -> Form : navigate('/')
+end
+
+deactivate Form
+@enduml

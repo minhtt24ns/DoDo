@@ -5,6 +5,8 @@ import SignUpPage from "./pages/SignUpPage";
 import SignInPage from "./pages/SignInPage";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import SidebarLayout from "./components/SidebarLayout";
+import DashBoard from "./pages/DashBoard";
 
 
 function App() {
@@ -24,7 +26,10 @@ function App() {
           />
           {/* protected routes */}
           <Route element={<ProtectedRoute/>}>
-            <Route path="/" element={<HomePage />} />
+            <Route element={<SidebarLayout />}>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/dashboard" element={<DashBoard />} />
+            </Route>
           </Route>
           {/* not found */}
           <Route path="*" element={<NotFound />} />
