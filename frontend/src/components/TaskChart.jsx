@@ -4,35 +4,45 @@ import { Calendar, Plus, CheckCircle2 } from "lucide-react";
 const TaskChart = ({ tasks }) => {
   const [hoveredIndex, setHoveredIndex] = useState(null);
 
-  // Generate data for the last 7 days
+  // Generate data for the last 12 months (1 year)
   const getChartData = () => {
     const data = [];
     const now = new Date();
     
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(now.getDate() - i);
-      d.setHours(0, 0, 0, 0);
-      const dayStart = d.getTime();
-      const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+    for (let i = 11; i >= 0; i--) {
+      // Calculate target month and year
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const year = d.getFullYear();
+      const month = d.getMonth();
       
+      const monthStart = new Date(year, month, 1).getTime();
+      const monthEnd = new Date(year, month + 1, 1).getTime();
+      
+      // Filter tasks created in this month
       const createdCount = tasks.filter((t) => {
         const time = new Date(t.createdAt).getTime();
-        return time >= dayStart && time < dayEnd;
+        return time >= monthStart && time < monthEnd;
       }).length;
       
+      // Filter tasks completed in this month (robust fallback to updatedAt/createdAt)
       const completedCount = tasks.filter((t) => {
-        if (!t.completedAt) return false;
-        const time = new Date(t.completedAt).getTime();
-        return time >= dayStart && time < dayEnd;
+        const isCompleted = t.status === "completed" || t.status === "complete";
+        if (!isCompleted) return false;
+        
+        const compDate = t.completedAt || t.updatedAt || t.createdAt;
+        if (!compDate) return false;
+        
+        const time = new Date(compDate).getTime();
+        return time >= monthStart && time < monthEnd;
       }).length;
       
-      const label = d.toLocaleDateString("vi-VN", { day: "numeric", month: "numeric" });
-      const weekday = d.toLocaleDateString("vi-VN", { weekday: "short" });
+      const label = `Thg ${month + 1}`;
+      const yearLabel = `'${String(year).slice(-2)}`;
       
       data.push({
-        dateStr: label,
-        dayName: weekday,
+        dateStr: `Tháng ${month + 1}, ${year}`,
+        dayName: label,
+        yearStr: yearLabel,
         created: createdCount,
         completed: completedCount,
       });
@@ -42,10 +52,10 @@ const TaskChart = ({ tasks }) => {
 
   const chartData = getChartData();
   
-  // Calculate max value to scale the chart
+  // Calculate max value to scale the chart dynamically
   const maxTasks = Math.max(
     ...chartData.map((d) => Math.max(d.created, d.completed)),
-    4 // Default minimum max value to keep a nice scale
+    4 // Keep a nice minimum scale
   );
 
   // Chart dimensions
@@ -54,18 +64,18 @@ const TaskChart = ({ tasks }) => {
   const paddingLeft = 40;
   const paddingRight = 20;
   const paddingTop = 30;
-  const paddingBottom = 40;
+  const paddingBottom = 45;
 
   const chartWidth = width - paddingLeft - paddingRight;
   const chartHeight = height - paddingTop - paddingBottom;
-  const barSpacing = chartWidth / 7;
-  const barWidth = 18;
+  const barSpacing = chartWidth / 12; // 12 columns for 12 months
+  const barWidth = 11; // Dual bars of size 11px each
 
-  // Grid lines
+  // Grid lines calculation
   const gridLines = [];
-  const step = Math.ceil(maxTasks / 4);
+  const step = Math.max(1, Math.ceil(maxTasks / 4));
   for (let i = 0; i <= 4; i++) {
-    gridLines.push(Math.round(i * step));
+    gridLines.push(i * step);
   }
   const actualMax = gridLines[gridLines.length - 1];
 
@@ -75,10 +85,10 @@ const TaskChart = ({ tasks }) => {
         <div className="space-y-1">
           <h3 className="text-md font-bold text-slate-800 flex items-center gap-2">
             <Calendar className="size-4.5 text-indigo-600" />
-            <span>Phân tích hoạt động 7 ngày qua</span>
+            <span>Phân tích hoạt động 1 năm qua</span>
           </h3>
           <p className="text-xs text-slate-400">
-            Số lượng công việc được tạo mới và hoàn thành theo từng ngày.
+            Số lượng công việc được tạo mới và hoàn thành theo từng tháng.
           </p>
         </div>
 
@@ -97,17 +107,17 @@ const TaskChart = ({ tasks }) => {
 
       {/* SVG Chart Container */}
       <div className="relative w-full overflow-x-auto select-none">
-        <div className="min-w-[600px] w-full">
+        <div className="min-w-[650px] w-full">
           <svg viewBox={`0 0 ${width} ${height}`} width="100%" height={height} className="overflow-visible">
             {/* Gradients */}
             <defs>
               <linearGradient id="createdGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#6366f1" />
-                <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="#4f46e5" stopOpacity="0.85" />
               </linearGradient>
               <linearGradient id="completedGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#10b981" />
-                <stop offset="100%" stopColor="#059669" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="#059669" stopOpacity="0.85" />
               </linearGradient>
             </defs>
 
@@ -129,7 +139,7 @@ const TaskChart = ({ tasks }) => {
                     x={paddingLeft - 10}
                     y={y + 4}
                     textAnchor="end"
-                    className="text-[10px] font-semibold fill-slate-400"
+                    className="text-[10px] font-bold fill-slate-400"
                   >
                     {val}
                   </text>
@@ -144,12 +154,12 @@ const TaskChart = ({ tasks }) => {
               // Created bar height and coordinate
               const createdHeight = (d.created / actualMax) * chartHeight;
               const createdY = chartHeight - createdHeight + paddingTop;
-              const createdX = groupCenterX - barWidth - 3;
+              const createdX = groupCenterX - barWidth - 2;
 
               // Completed bar height and coordinate
               const completedHeight = (d.completed / actualMax) * chartHeight;
               const completedY = chartHeight - completedHeight + paddingTop;
-              const completedX = groupCenterX + 3;
+              const completedX = groupCenterX + 2;
 
               return (
                 <g 
@@ -158,11 +168,11 @@ const TaskChart = ({ tasks }) => {
                   onMouseLeave={() => setHoveredIndex(null)}
                   className="cursor-pointer"
                 >
-                  {/* Invisible broad rect for easier hover targeting */}
+                  {/* Broad transparent overlay for easier hovering */}
                   <rect
-                    x={paddingLeft + i * barSpacing + 5}
+                    x={paddingLeft + i * barSpacing + 2}
                     y={paddingTop}
-                    width={barSpacing - 10}
+                    width={barSpacing - 4}
                     height={chartHeight}
                     fill="transparent"
                   />
@@ -174,9 +184,9 @@ const TaskChart = ({ tasks }) => {
                       y={createdY}
                       width={barWidth}
                       height={createdHeight}
-                      fill="url(#createdGrad)"
-                      rx="4"
-                      className="transition-all duration-300 hover:brightness-105"
+                      fill="#6366f1"
+                      rx="3"
+                      className="transition-all duration-300 hover:opacity-90"
                     />
                   )}
 
@@ -187,9 +197,9 @@ const TaskChart = ({ tasks }) => {
                       y={completedY}
                       width={barWidth}
                       height={completedHeight}
-                      fill="url(#completedGrad)"
-                      rx="4"
-                      className="transition-all duration-300 hover:brightness-105"
+                      fill="#10b981"
+                      rx="3"
+                      className="transition-all duration-300 hover:opacity-90"
                     />
                   )}
 
@@ -198,25 +208,25 @@ const TaskChart = ({ tasks }) => {
                     x={groupCenterX}
                     y={height - paddingBottom + 18}
                     textAnchor="middle"
-                    className="text-[11px] font-bold fill-slate-600"
+                    className="text-[10.5px] font-bold fill-slate-600"
                   >
                     {d.dayName}
                   </text>
                   <text
                     x={groupCenterX}
-                    y={height - paddingBottom + 32}
+                    y={height - paddingBottom + 30}
                     textAnchor="middle"
-                    className="text-[9px] font-medium fill-slate-400"
+                    className="text-[9px] font-semibold fill-slate-400"
                   >
-                    {d.dateStr}
+                    {d.yearStr}
                   </text>
 
-                  {/* Highlight column background on hover */}
+                  {/* Column Highlight on Hover */}
                   {hoveredIndex === i && (
                     <rect
-                      x={paddingLeft + i * barSpacing + 4}
+                      x={paddingLeft + i * barSpacing + 2}
                       y={paddingTop - 10}
-                      width={barSpacing - 8}
+                      width={barSpacing - 4}
                       height={chartHeight + 20}
                       fill="rgba(99, 102, 241, 0.04)"
                       rx="8"
@@ -239,7 +249,7 @@ const TaskChart = ({ tasks }) => {
               }}
             >
               <div className="font-bold border-b border-slate-700 pb-1 text-center text-[10px] text-slate-300">
-                {chartData[hoveredIndex].dayName} ({chartData[hoveredIndex].dateStr})
+                {chartData[hoveredIndex].dateStr}
               </div>
               <div className="flex items-center justify-between gap-4">
                 <span className="flex items-center gap-1.5 text-indigo-300">

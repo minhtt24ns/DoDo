@@ -14,7 +14,7 @@ const taskSchema = new mongoose.Schema({
     },
     status:{
         type: String,
-        enum: ["active", "complete"],
+        enum: ["active", "completed"],
         default: "active",
     },
     completedAt: {
