@@ -7,16 +7,22 @@ import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import { protectedRoute } from "./middlewares/authMiddleware.js";
+import path from "path";
+
+
 
 dotenv.config();
 
 const PORT = process.env.PORT || 5001;
+const __dirname = path.resolve();
 
 const app = express();
 
 
 //middleware
-app.use(cors({origin: process.env.CLIENT_URL,credentials:true}));
+if(process.env.NODE_ENV === "development"){
+    app.use(cors({origin: process.env.CLIENT_URL,credentials:true}));
+}
 app.use(express.json());
 app.use(cookieParser());
 
@@ -24,9 +30,17 @@ app.use(cookieParser());
 app.use("/api/auth", authRouters);
 
 //private routes
-app.use(protectedRoute);
-app.use("/api/users", usersRoute);
-app.use("/api/tasks", tasksRouters);
+app.use("/api/users", protectedRoute, usersRoute);
+app.use("/api/tasks", protectedRoute, tasksRouters);
+
+// Phục vụ file tĩnh frontend (production) - ĐẶT SAU các API route
+if(process.env.NODE_ENV === "production"){
+    app.use(express.static(path.join(__dirname,'../frontend/dist')))
+
+    app.get("*",(req,res)=>{
+        res.sendFile(path.join(__dirname,'../frontend/dist/index.html'))
+    })
+}
 
 // Connect to MongoDB
 connectDB().then(() => {

@@ -84,10 +84,11 @@ export const signIn = async (req, res) => {
         });
 
         //gửi refresh token về client thông qua cookie
+        const isProduction = process.env.NODE_ENV === "production";
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,     //cookie này không thể bị truy cập bởi javascript
-            secure: true,       //cookie chỉ được gửi qua https
-            sameSite: "none", //cho phép backend và frontend chạy trên 2 domain khác nhau
+            secure: isProduction && !process.env.CLIENT_URL?.includes("localhost"), //chỉ bật secure khi deploy HTTPS thật
+            sameSite: isProduction ? "strict" : "none", //cùng origin trong production, cross-origin khi dev
             maxAge: REFRESH_TOKEN_TTL,
         });
 

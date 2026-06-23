@@ -1,8 +1,10 @@
 import { useAuthStore } from "@/stores/useAuthStore";
 import axios from "axios";
 
+const BASE_URL = import.meta.env.MODE === "development" ? "http://localhost:5001/api" : "/api";
+
 const api = axios.create({
-    baseURL: import.meta.env.MODE === 'development' ? 'http://localhost:5001/api' : '/api',
+    baseURL: BASE_URL,
     withCredentials:true,
 });
 
@@ -33,8 +35,8 @@ api.interceptors.response.use(
     originalRequest._retryCount = originalRequest._retryCount || 0;
 
 
-    // refresh token
-    if(error.response?.status === 403 && originalRequest._retryCount < 4){
+    // refresh token khi access token hết hạn (403) hoặc không tồn tại (401)
+    if((error.response?.status === 401 || error.response?.status === 403) && originalRequest._retryCount < 4){
       originalRequest._retryCount+=1;
       try{
         const res = await api.post('/auth/refresh',{withCredentials: true });
